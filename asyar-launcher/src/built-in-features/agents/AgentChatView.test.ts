@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./agentService.svelte', () => ({
@@ -29,11 +29,14 @@ vi.mock('../../lib/ipc/commands', () => ({
   showSettingsWindow: vi.fn(),
 }));
 
+vi.mock('../../utils/copyText', () => ({ copyText: vi.fn() }));
+import { copyText } from '../../utils/copyText';
+
 vi.mock('../../services/opener/openerService', () => ({
   openerService: { open: vi.fn().mockResolvedValue(undefined) },
 }));
-
 import { openerService } from '../../services/opener/openerService';
+
 import AgentChatView from './AgentChatView.svelte';
 import { agentService } from './agentService.svelte';
 import { agentsManager } from './agentsManager.svelte';
@@ -111,6 +114,42 @@ describe('AgentChatView', () => {
     citation.dispatchEvent(unsafeClick);
     expect(unsafeClick.defaultPrevented).toBe(true);
     expect(openerService.open).not.toHaveBeenCalled();
+  });
+
+  it('offers keyboard-accessible whole-message copy and preserves native copy', async () => {
+    const text = '**Answer**\n\n```ts\nconst n = 1;\n```';
+    mockedAgentService.listMessages.mockResolvedValue([
+      {
+        id: 'answer',
+        threadId: thread.id,
+        role: 'assistant',
+        content: { text },
+        createdAt: 1,
+        runId: null,
+      },
+    ]);
+    render(AgentChatView);
+    const button = await screen.findByRole('button', { name: 'Copy message' });
+    expect(button.tabIndex).toBe(0);
+    expect(button.closest('[data-no-focus-steal]')).not.toBeNull();
+    await fireEvent.click(button);
+    expect(copyText).toHaveBeenCalledWith(text);
+    const event = new KeyboardEvent('keydown', {
+      key: 'c',
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    button.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    const selectionEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    button.dispatchEvent(selectionEvent);
+    expect(selectionEvent.defaultPrevented).toBe(false);
   });
 
   it('refreshes the sidebar when the selected thread is cleared after deletion', async () => {
