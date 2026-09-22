@@ -12,6 +12,7 @@
     extractGroundingFromMessage,
     extractSourcesFromMessage,
     extractToolUsesFromMessage,
+    handleNewThread,
     messageBubbleVariant,
     resolveThreadId,
     lastAssistantMessageText,
@@ -24,6 +25,7 @@
   import { feedbackService } from '../../services/feedback/feedbackService.svelte';
   import { t } from '../../services/i18n';
   import { isAnyModalOpen } from '../../components/base/Modal.logic';
+  import { platform } from '@tauri-apps/plugin-os';
 
   const agentId = $derived(agentsManager.currentAgentId);
   let agent = $state<AgentDef | null>(null);
@@ -137,6 +139,22 @@
     agentsManager.currentThreadId = threadId;
   }
 
+  async function createAndSelectNewThread() {
+    const currentAgentId = agentId;
+    if (!currentAgentId) return;
+    try {
+      await handleNewThread(currentAgentId, {
+        service: agentService,
+        refreshThreadsAndSelect: (thread) => {
+          if (agentsManager.currentAgentId !== currentAgentId) return;
+          agentsManager.currentThreadId = thread.id;
+        },
+      });
+    } catch (err) {
+      logService.warn(`[agents] new-thread shortcut failed: ${err}`);
+    }
+  }
+
   /**
    * Move thread selection up or down. Wrapping is disabled — top/bottom of
    * the list is a hard stop so the user can tell visually when they're at
@@ -158,12 +176,27 @@
   }
 
   function handleWindowKeydown(event: KeyboardEvent) {
+    // Overlays own their keyboard shortcuts, including Cmd/Ctrl+N.
+    if (document.querySelector('.action-popup')) return;
+    if (isAnyModalOpen(document)) return;
+
+    const isMacos = platform() === 'macos';
+    const hasNewThreadModifier = isMacos
+      ? event.metaKey && !event.ctrlKey
+      : event.ctrlKey && !event.metaKey;
+    if (
+      hasNewThreadModifier &&
+      event.key.toLowerCase() === 'n' &&
+      !event.altKey &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      void createAndSelectNewThread();
+      return;
+    }
     // Skip when modifiers are held — those are launcher / OS shortcuts.
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
-    // When the action panel (Cmd+K) is open, let it own keyboard navigation.
-    if (document.querySelector('.action-popup')) return;
-    // A modal dialog can open on top of this view — don't steal its keys.
-    if (isAnyModalOpen(document)) return;
     if (event.key === 'ArrowUp') {
       moveThreadSelection(-1);
       event.preventDefault();

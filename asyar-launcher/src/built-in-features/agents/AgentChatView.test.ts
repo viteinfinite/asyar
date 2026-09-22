@@ -7,6 +7,7 @@ vi.mock('./agentService.svelte', () => ({
     getById: vi.fn(),
     listThreads: vi.fn(),
     listMessages: vi.fn(),
+    createThread: vi.fn(),
   },
 }));
 
@@ -17,6 +18,14 @@ vi.mock('../../components', async () => ({
 
 vi.mock('../../services/log/logService', () => ({
   logService: { warn: vi.fn() },
+}));
+
+vi.mock('../../components/base/Modal.logic', () => ({
+  isAnyModalOpen: vi.fn(() => false),
+}));
+
+vi.mock('@tauri-apps/plugin-os', () => ({
+  platform: vi.fn(() => 'macos'),
 }));
 
 vi.mock('../../services/feedback/feedbackService.svelte', () => ({
@@ -36,8 +45,11 @@ import AgentChatView from './AgentChatView.svelte';
 import { agentService } from './agentService.svelte';
 import { agentsManager } from './agentsManager.svelte';
 import type { MessageDef } from './types';
+import { isAnyModalOpen } from '../../components/base/Modal.logic';
+import { platform } from '@tauri-apps/plugin-os';
 
 const mockedAgentService = vi.mocked(agentService);
+const mockedPlatform = vi.mocked(platform);
 
 const agent = {
   id: 'agent-1',
@@ -76,6 +88,8 @@ describe('AgentChatView', () => {
     mockedAgentService.getById.mockReturnValue(agent);
     mockedAgentService.listThreads.mockResolvedValue([thread]);
     mockedAgentService.listMessages.mockResolvedValue([]);
+    mockedPlatform.mockReturnValue('macos');
+    vi.mocked(isAnyModalOpen).mockReturnValue(false);
     agentsManager.currentAgentId = agent.id;
     agentsManager.currentThreadId = thread.id;
     agentsManager.sending = false;
@@ -138,6 +152,93 @@ describe('AgentChatView', () => {
 
     await screen.findByText(thread.title);
     expect(mockedAgentService.listThreads.mock.calls).toHaveLength(1);
+  });
+
+  it.each([
+    { hostPlatform: 'macos', shortcut: { metaKey: true }, wrongShortcut: { ctrlKey: true } },
+    { hostPlatform: 'windows', shortcut: { ctrlKey: true }, wrongShortcut: { metaKey: true } },
+    { hostPlatform: 'linux', shortcut: { ctrlKey: true }, wrongShortcut: { metaKey: true } },
+  ])(
+    'creates and selects a new thread only with the correct platform shortcut',
+    async ({ hostPlatform, shortcut, wrongShortcut }) => {
+      const newThread = { ...thread, id: 'thread-new', title: null };
+      mockedPlatform.mockReturnValue(hostPlatform as ReturnType<typeof platform>);
+      mockedAgentService.createThread.mockResolvedValue(newThread);
+      render(AgentChatView);
+      await screen.findByText(thread.title);
+
+      const wrongEvent = new KeyboardEvent('keydown', {
+        key: 'n',
+        ...wrongShortcut,
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(wrongEvent);
+      expect(mockedAgentService.createThread).not.toHaveBeenCalled();
+      expect(wrongEvent.defaultPrevented).toBe(false);
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'n',
+        ...shortcut,
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(event);
+
+      await waitFor(() => {
+        expect(mockedAgentService.createThread).toHaveBeenCalledWith(agent.id, '');
+        expect(agentsManager.currentThreadId).toBe(newThread.id);
+      });
+      expect(event.defaultPrevented).toBe(true);
+    },
+  );
+
+  it.each(['modal', 'action panel'] as const)(
+    'leaves the new-thread shortcut for an open %s',
+    async (overlay) => {
+      render(AgentChatView);
+      await screen.findByText(thread.title);
+      const popup = document.createElement('div');
+      if (overlay === 'modal') {
+        vi.mocked(isAnyModalOpen).mockReturnValue(true);
+      } else {
+        popup.className = 'action-popup';
+        document.body.appendChild(popup);
+      }
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'n',
+        metaKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      window.dispatchEvent(event);
+
+      expect(mockedAgentService.createThread).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+      popup.remove();
+    },
+  );
+
+  it('does not select the new thread after switching to another agent', async () => {
+    const newThread = { ...thread, id: 'thread-new', title: null };
+    const creation = deferred<typeof newThread>();
+    mockedAgentService.createThread.mockReturnValue(creation.promise);
+    render(AgentChatView);
+    await screen.findByText(thread.title);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'n', metaKey: true, bubbles: true, cancelable: true }),
+    );
+    await waitFor(() => expect(mockedAgentService.createThread).toHaveBeenCalledWith(agent.id, ''));
+
+    agentsManager.currentAgentId = 'agent-2';
+    agentsManager.currentThreadId = 'agent-2-thread';
+    creation.resolve(newThread);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(agentsManager.currentThreadId).toBe('agent-2-thread');
   });
 
   it('ignores messages that resolve after a newer thread is selected', async () => {

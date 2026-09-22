@@ -84,6 +84,12 @@ A few built-in features add extra shortcuts while their view is active.
 | `Enter`  | Switch immediately to the selected window      |
 | `⌘K`     | Open actions for the selected window or layout |
 
+**AI chat**
+
+| Shortcut        | What it does              |
+| --------------- | ------------------------- |
+| `⌘N` / `Ctrl+N` | Create a new conversation |
+
 **File Search**
 
 | Shortcut     | What it does                              |

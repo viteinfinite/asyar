@@ -20,5 +20,6 @@ describe('LAUNCHER_SHORTCUTS', () => {
     const labels = LAUNCHER_SHORTCUTS.map((s) => s.label.toLowerCase()).join(' | ');
     expect(labels).toContain('action panel');
     expect(labels).toContain('settings');
+    expect(labels).toContain('new ai thread');
   });
 });

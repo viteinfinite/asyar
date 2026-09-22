@@ -42,4 +42,9 @@ export const LAUNCHER_SHORTCUTS: readonly ShortcutEntry[] = [
     label: 'Go back from a view, or exit AI mode when the search is empty',
     scope: 'view',
   },
+  {
+    keys: ['⌘', 'N'],
+    label: 'Create a new AI thread (Ctrl+N outside macOS)',
+    scope: 'view',
+  },
 ] as const;

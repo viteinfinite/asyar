@@ -117,19 +117,19 @@ So the workflow is: select some text → press the hotkey → done. No windows, 
 
 ## Shortcuts & actions
 
-| Action                    | How                                                |
-| ------------------------- | -------------------------------------------------- |
-| Enter AI mode             | `Tab` from the search bar                          |
-| Send a message            | `Enter` (while in AI mode or inside the chat view) |
-| Copy Last Response        | `⌘K` → **Copy Last Response**                      |
-| Open Manage Agents        | Search "Manage Agents" → `Enter`                   |
-| New Agent                 | `⌘K` → **New Agent** (in Manage Agents view)       |
-| Edit Agent                | `⌘K` → **Edit Agent**                              |
-| Delete Agent              | `⌘K` → **Delete Agent**                            |
-| New Thread                | `⌘K` → **New Thread** (in chat view)               |
-| Delete Current Thread     | `⌘K` → **Delete Current Thread**                   |
-| Cancel a running response | `⌘K` → **Cancel Run**                              |
-| Navigate threads          | `↑` / `↓`                                          |
+| Action                    | How                                                                       |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Enter AI mode             | `Tab` from the search bar                                                 |
+| Send a message            | `Enter` (while in AI mode or inside the chat view)                        |
+| Copy Last Response        | `⌘K` → **Copy Last Response**                                             |
+| Open Manage Agents        | Search "Manage Agents" → `Enter`                                          |
+| New Agent                 | `⌘K` → **New Agent** (in Manage Agents view)                              |
+| Edit Agent                | `⌘K` → **Edit Agent**                                                     |
+| Delete Agent              | `⌘K` → **Delete Agent**                                                   |
+| New Thread                | `⌘N` on macOS, `Ctrl+N` elsewhere (or `⌘K` → **New Thread**) in chat view |
+| Delete Current Thread     | `⌘K` → **Delete Current Thread**                                          |
+| Cancel a running response | `⌘K` → **Cancel Run**                                                     |
+| Navigate threads          | `↑` / `↓`                                                                 |
 
 ## Tips
 
